@@ -1,6 +1,7 @@
 import requests
 import json
 from shapely.geometry import Point, shape
+import queries
 
 url="https://services5.arcgis.com/7nsPwEMP38bSkCjy/arcgis/rest/services/LA_Times_Neighborhoods/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=json"
 
@@ -16,34 +17,43 @@ def dades_barris():
 def get_barri(lat,lon,barris):
     punt=Point(lon,lat)
 
-    for feature in barris['geometry']:
+    for feature in barris['features']:
         geom=feature['geometry']
-        forma=shape(geom)
+        if 'rings' in geom:
+            geo_adaptat = {
+                'type': 'Polygon',  
+                'coordinates': geom['rings'] 
+            }
+        forma=shape(geo_adaptat)
 
         if forma.contains(punt):
-            nom=feature['properties'].get('name','Barri')
+            nom=feature['attributes']['name']
             return nom
         
     return "Desconegut"
 
-def agrupar_barris(llocs):
+def agrupar_barris(llocs,barris):
     """
     Agrupa els elements d'Overpass en un diccionari de resultats per nom de barri.
     """
-    dic_barris={}
     
-    barris=dades_barris()
-
     for element in llocs:
-        lat=element.get('lat')
-        lon=element.get('lon')
+        if 'node' in element:
+            lat=element.get('lat')
+            lon=element.get('lon')
+        elif 'center' in element:
+            lat=element['center'].get('lat')
+            lon=element['center'].get('lon')
+        else:
+            continue
         
         b=get_barri(lat,lon,barris)
         
         if b not in dic_barris:
             dic_barris[b]=[element]
         else:
-            dic_barris[b].append(element)
+            if element['id'] not in dic_barris[b]:
+                dic_barris[b].append(element)
             
 
     return dic_barris
@@ -51,7 +61,10 @@ def agrupar_barris(llocs):
     
 
 if __name__ == '__main__':
-    
-    e_agrupats=agrupar_barris(llocs)
-    print(e_agrupats)
+    dic_barris={}
+    barris=dades_barris()
+    llocs=queries.do_query("Groceries")
+    #print(llocs)
+    e_agrupats=agrupar_barris(llocs,barris)
+    #print(e_agrupats)
 
