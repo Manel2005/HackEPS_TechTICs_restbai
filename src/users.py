@@ -1,6 +1,9 @@
 
 #### Tipus de barris definits:
 
+from queries import *
+from barris import *
+
 class Usuari:
     def __init__(self, name, AccessTransPublic=0, CultGastron=0, SeguretatPriv=0, CLocalComunitat=0, AUniversal = 0, EVerdsNatura=0, InfraDigital=0, AmbientDens=0):
         self.name = name
@@ -52,30 +55,30 @@ def priorities(self): # retorna llista amb llistes de barris amb el nombre de se
         looking4 = whichQueries('p_gastrocult')
         coincidencies = do_query(looking4) # lat i long de les coincidencies trobades
         barris_gastrocult = agrupar_barris(coincidencies)
-        set_CultGastron(self,p_gastrocult)
+        self.set_CultGastron(self,p_gastrocult)
     p_verd = int(input("Proximitat a zones verdes = "))
     if p_verd >= 3:
         looking4 = whichQueries('p_verd')
         coincidencies = do_query(looking4) 
         barris_verd = agrupar_barris(coincidencies)
-        set_EVerdsNatura(self,p_verd)
+        self.set_EVerdsNatura(self,p_verd)
     p_activitatf = int(input("Proximitat a gimnassos i complexos esportius = "))
     if p_activitatf >= 3:
         looking4 = whichQueries('p_activitatf')
         coincidencies = do_query(looking4)
         barris_activitatf = agrupar_barris(coincidencies)
-        set_CLocalComunitat(self, (self.CLocalComunitat += 1))
+        self.set_CLocalComunitat(self, (self.CLocalComunitat += 1))
     p_ambient = int(input("Tenir un fort sentiment de comunitat o una comunitat de veïns propera = "))
     if p_ambient >= 3:
         looking4 = whichQueries('p_ambient')
         coincidencies = do_query(looking4)
         barris_ambient = agrupar_barris(coincidencies)
-        set_AmbientDens(self, p_ambient))        
+        self.set_AmbientDens(self, p_ambient))        
     else:
         looking4 = whichQueries('p_privacitat')
         coincidencies = do_query(looking4)
         barris_privacitat = agrupar_barris(coincidencies)
-        set_SeguretatPriv(self, 6 - p_ambient)
+        self.set_SeguretatPriv(self, 6 - p_ambient)
         p_accessib = int(input("Acessibilitat Universal i fàcilitat per a persones amb mobilitat reduïda = "))
     if p_accessib >= 3:
         p_transpublic = int(input("Connexions amb mitjans de transport públic = "))
