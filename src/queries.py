@@ -28,7 +28,7 @@ def do_query(params, access=0):
     for param in params:
         data = overpass_query + param + '(area.la);out center;'
         response = requests.post(overpass_url, data={'data':data})
-        l.append(response.json().get('elements'))
+        l.extend(response.json().get('elements'))
     return l
 
 

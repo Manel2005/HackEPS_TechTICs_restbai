@@ -36,7 +36,7 @@ def agrupar_barris(llocs,barris):
     """
     Agrupa els elements d'Overpass en un diccionari de resultats per nom de barri.
     """
-    
+    dic_barris={}
     for element in llocs:
         if 'node' in element:
             lat=element.get('lat')
@@ -63,8 +63,13 @@ def agrupar_barris(llocs,barris):
 if __name__ == '__main__':
     dic_barris={}
     barris=dades_barris()
-    llocs=queries.do_query("Groceries")
+    llocs=queries.do_query(['["amenity"="restaurant"]', '["amenity"="bar"]'])
     #print(llocs)
-    e_agrupats=agrupar_barris(llocs,barris)
-    #print(e_agrupats)
+    i_barris={}
+    i_barris = agrupar_barris(llocs, barris)
+    diccionari_final = {}
 
+    for barri, elements in i_barris.items():
+        diccionari_final[barri] = len(elements)
+        
+    print(diccionari_final)
