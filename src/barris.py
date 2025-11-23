@@ -2,10 +2,10 @@ import requests
 import json
 from shapely.geometry import Point, shape
 import queries
+from dic2csv import exportar_a_csv
+from duresa import *
 
-url="https://services5.arcgis.com/7nsPwEMP38bSkCjy/arcgis/rest/services/LA_Times_Neighborhoods/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=json"
-
-def dades_barris():
+def dades_barris(url):
     try:
         resposta = requests.get(url)
         resposta.raise_for_status() # Llença una excepció per a codis d'estat HTTP dolents
@@ -61,15 +61,24 @@ def agrupar_barris(llocs,barris):
     
 
 if __name__ == '__main__':
-    dic_barris={}
-    barris=dades_barris()
-    llocs=queries.do_query(['["amenity"="restaurant"]', '["amenity"="bar"]'])
+    
+    '''
+    llocs=queries.do_query(['["amenity"="restaurant"]', '["amenity"="cafe"]', '["amenity"="bar"]', 
+                         '["amenity"="pub"]', '["amenity"="theatre"]', '["amenity"="cinema"]', 
+                         '["amenity"="arts_centre"]', '["amenity"="nightclub"]', 
+                         '["amenity"="music_venue"]', '["tourism"="museum"]', 
+                         '["tourism"="gallery"]', '["amenity"="community_centre"]'])
     #print(llocs)
-    i_barris={}
-    i_barris = agrupar_barris(llocs, barris)
+    i_barris = agrupar_barris(llocs)
     diccionari_final = {}
 
     for barri, elements in i_barris.items():
         diccionari_final[barri] = len(elements)
         
-    print(diccionari_final)
+    exportar_a_csv(diccionari_final, nom_fitxer="recompte_barri_LA.csv")
+    '''
+    url_barris="https://services5.arcgis.com/7nsPwEMP38bSkCjy/arcgis/rest/services/LA_Times_Neighborhoods/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=json"
+    url_crims='https://services1.arcgis.com/tp9wqSVX1AitKgjd/arcgis/rest/services/chei/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
+    barris=dades_barris(url_barris)
+    duresa=dades_barris(url_crims)
+    print(agrupar_duresa_per_barris(barris,duresa))
