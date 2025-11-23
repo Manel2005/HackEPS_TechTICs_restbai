@@ -84,12 +84,12 @@ def obtenir_puntuacions_barris(preferencies: dict) -> pd.DataFrame:
 
     if preferencies["seguretat"] > 1:
         filtres.extend([
-            '["amenity"="police"]', 
+            '["amenity"="police"]',
             '["amenity"="fire_station"]',
-            '["emergency"]', 
-            '["amenity"="hospital"]', 
+            '["emergency"]',
+            '["amenity"="hospital"]',
             '["amenity"="clinic"]',
-            ]) 
+            ])
 
     # Si no hi ha cap filtre actiu, per defecte demanem restaurants (per tenir alguna cosa)
     if not filtres:
@@ -206,12 +206,12 @@ def obtenir_puntuacions_barris(preferencies: dict) -> pd.DataFrame:
 
 
         # Pesos a partir del qüestionari (0–5 → 0–1)
-        w_cultura = preferencies["oferta_cultural"] / 6.0
-        w_verda = preferencies["prox_zones_verdes"] / 6.0
-        w_esport = preferencies["prox_gimnas"] / 6.0
-        w_comunitat = preferencies["comunitat"] / 6.0
-        w_transport = preferencies["transport_public"] / 6.0
-        w_seguretat = preferencies["seguretat"] / 6.0
+        w_cultura = preferencies["oferta_cultural"] / 5.0
+        w_verda = preferencies["prox_zones_verdes"] / 5.0
+        w_esport = preferencies["prox_gimnas"] / 5.0
+        w_comunitat = preferencies["comunitat"] / 5.0
+        w_transport = preferencies["transport_public"] / 5.0
+        w_seguretat = preferencies["seguretat"] / 5.0
         # bloc_residencial no es implementat;
         # ara mateix no afecten la puntuació, però es recullen al qüestionari.
 
@@ -278,8 +278,16 @@ if "clients" not in st.session_state:
 if "scores_df" not in st.session_state:
     st.session_state.scores_df = None
 
+if "client_scores" not in st.session_state:
+    # nom_client -> DataFrame and punctuation d'aquell client
+    st.session_state.client_scores = {}
+
 if "selected_client" not in st.session_state:
     st.session_state.selected_client = st.session_state.clients[0]
+
+if "client_params" not in st.session_state:
+    # diccionari: nom_client -> dict de preferències
+    st.session_state.client_params = {}
 
 
 # -------------------------------------------------------------------
@@ -288,40 +296,54 @@ if "selected_client" not in st.session_state:
 st.sidebar.header("Qüestionari de preferències")
 
 with st.sidebar.form("formulari_preferencies"):
+
+    client_actual = st.session_state.selected_client
+    params_guardats = st.session_state.client_params.get(client_actual, {})
+
     oferta_cultural = st.slider(
         "Importància de l'oferta cultural i gastronòmica",
-        1, 5, 1,
+        1, 5,
+        params_guardats.get("oferta_cultural", 1),
     )
     prox_zones_verdes = st.slider(
         "Importància de la proximitat a zones verdes",
-        1, 5, 1,
+        1, 5,
+        params_guardats.get("prox_zones_verdes", 1),
     )
     prox_gimnas = st.slider(
         "Importància de la proximitat a gimnasos i equipaments esportius",
-        1, 5, 1,
+        1, 5,
+        params_guardats.get("prox_gimnas", 1),
     )
     comunitat = st.slider(
         "Importància del sentiment de comunitat al barri",
-        1, 5, 1,
+        1, 5,
+        params_guardats.get("comunitat", 1),
     )
     accessibilitat = st.checkbox(
-        "És imprescindible una bona accessibilitat (mobilitat reduïda)?"
+        "És imprescindible una bona accessibilitat (mobilitat reduïda)?",
+        value=params_guardats.get("accessibilitat", False),
     )
     transport_public = st.slider(
         "Importància de les connexions amb transport públic",
-        1, 5, 1,
+        1, 5,
+        params_guardats.get("transport_public", 1),
     )
     seguretat = st.slider(
         "Importància d'un bon nivell de seguretat al barri",
-        1, 5, 1,
+        1, 5,
+        params_guardats.get("seguretat", 1),
     )
     bloc_residencial = st.checkbox(
-        "Prefereixo que la llar sigui en un bloc residencial"
+        "Prefereixo que la llar sigui en un bloc residencial",
+        value=params_guardats.get("bloc_residencial", False),
     )
 
     enviat = st.form_submit_button("Obtenir barris recomanats")
 
     if enviat:
+        client_actual = st.session_state.selected_client
+
         preferencies = {
             "oferta_cultural": oferta_cultural,
             "prox_zones_verdes": prox_zones_verdes,
@@ -334,6 +356,9 @@ with st.sidebar.form("formulari_preferencies"):
             "client": st.session_state.selected_client,
         }
 
+        # Guarda preferencies del client
+        st.session_state.client_params[client_actual] = preferencies
+
         try:
             df_resultats = obtenir_puntuacions_barris(preferencies)
         except Exception as e:
@@ -345,10 +370,16 @@ with st.sidebar.form("formulari_preferencies"):
                 "Torna-ho a intentar més tard."
             )
         else:
-            st.session_state.scores_df = df_resultats
+            # Desa els resultats per aquest client
             if df_resultats is None or df_resultats.empty:
+                # Aquest client NO té dades -> neteja resultats
+                st.session_state.client_scores[client_actual] = pd.DataFrame()
+                st.session_state.scores_df = pd.DataFrame()
                 st.sidebar.warning("No s'han trobat resultats per als criteris seleccionats.")
             else:
+                # Desa els resultats per aquest client
+                st.session_state.client_scores[client_actual] = df_resultats
+                st.session_state.scores_df = df_resultats
                 st.sidebar.success("Puntuacions actualitzades amb dades d'Overpass.")
 
 
@@ -365,8 +396,8 @@ with col_client:
         "Client",
         st.session_state.clients,
         label_visibility="collapsed",
+        key="selected_client", # Streamlit controla directament aquest estat
     )
-    st.session_state.selected_client = client
 
 with col_nou_nom:
     st.markdown("**Nou client**")
@@ -398,10 +429,18 @@ with col_boto:
 # -------------------------------------------------------------------
 # DADES PER AL MAPA I RÀNQUING
 # -------------------------------------------------------------------
-df = st.session_state.scores_df
+client_actual = st.session_state.selected_client
 
+# Carreguem les dades associades a aquest client (si n'hi ha)
+df = st.session_state.client_scores.get(client, None)
+st.session_state.scores_df = df # mantenim sincronitzat l'estat global
+
+# Si aquest client no té dades, NO MOSTREM EL MAPA NI EL RÀNQUING
 if df is None or df.empty:
-    st.info("Omple el qüestionari de l'esquerra i prem «Obtenir barris recomanats».")
+    st.info(
+        f"El client <<{client}>> encara no té cap recomanació. "
+        "Omple el formulari de l'esquerra i prem <<Obtenir barris recomanats>>."
+    )
     st.stop()
 
 score_col = "score"
