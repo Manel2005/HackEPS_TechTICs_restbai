@@ -418,15 +418,6 @@ st.markdown("### Selecció de client")
 
 col_client, col_nou_nom, col_boto = st.columns([2, 2, 1])
 
-with col_client:
-    st.markdown("**Client**")
-    client = st.selectbox(
-        "Client",
-        st.session_state.clients,
-        label_visibility="collapsed",
-        key="selected_client", # Streamlit controla directament aquest estat
-    )
-
 with col_nou_nom:
     st.markdown("**Nou client**")
     nou_client = st.text_input(
@@ -447,12 +438,22 @@ with col_boto:
             # 1) Afegim el client a la llista
             st.session_state.clients.append(nou_client)
             # 2) El marquem com a seleccionat
-            st.session_state.selected_client = nou_client
+            st.session_state.selected_client_widget = nou_client
             # 3) Missatge
             st.success(f"S'ha afegit el client '{nou_client}'.")
             # 4) Forcem un rerun perquè el selectbox es torni a dibuixar amb la nova llista
             st.rerun()
 
+with col_client:
+    st.markdown("**Client**")
+    client = st.selectbox(
+        "Client",
+        st.session_state.clients,
+        label_visibility="collapsed",
+        key="selected_client_widget", # Streamlit controla directament aquest estat
+    )
+    # Sincronitza clau d'app
+    st.session_state.selected_client = client
 
 # -------------------------------------------------------------------
 # DADES PER AL MAPA I RÀNQUING
