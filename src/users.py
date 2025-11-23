@@ -1,5 +1,10 @@
 
 #### Tipus de barris definits:
+#### barris_gastrocult, barris_verd, barris_activitatf, barris_ambient, 
+#### barris_privacitat, barris_accessib, barris_transpublic, barris_segurs, 
+#### barris_economics, barris_ocompra, barris_pisos, barris_cases, 
+#### barris_classeAlta, barris_bonaConnexio)
+
 
 from queries import *
 from barris import *
@@ -39,6 +44,27 @@ class Usuari:
 
     def set_AmbientDens(self, atr8):
         self.AmbientDens = atr8
+
+def printaprioritats(self):
+    """Imprimeix les prioritats amb representació visual"""
+    print("\n=== PRIORITATS DE L'USUARI ===\n")
+    
+    prioritats = {
+        "Accessibilitat i Transport Públic": self.AccessTransPublic,
+        "Cultura i Gastronomia": self.CultGastron,
+        "Seguretat i Privacitat": self.SeguretatPriv,
+        "Comerç Local i Comunitat": self.CLocalComunitat,
+        "Accessibilitat Universal": self.AUniversal,
+        "Espais Verds i Natura": self.EVerdsNatura,
+        "Infraestructura Digital": self.InfraDigital,
+        "Ambient i Densitat": self.AmbientDens
+    }
+    
+    for nom, valor in prioritats.items():
+        barra = "█" * valor + "░" * (5 - valor)
+        print(f"{nom:40} {barra} ({valor}/5)")
+    
+    print("\n" + "="*60 + "\n")
         
 
 # Mètode per obtenir el nom al que referir-nos a l'usuari
@@ -56,11 +82,15 @@ def priorities(self): # retorna llista amb llistes de barris amb el nombre de se
         coincidencies = do_query(looking4) # lat i long de les coincidencies trobades
         barris_gastrocult = agrupar_barris(coincidencies)
         self.set_CultGastron(self,p_gastrocult)
+    else:
+        self.set_CultGastron(self,p_gastrocult)
     p_verd = int(input("Proximitat a zones verdes = "))
     if p_verd >= 3:
         looking4 = whichQueries('p_verd')
         coincidencies = do_query(looking4) 
         barris_verd = agrupar_barris(coincidencies)
+        self.set_EVerdsNatura(self,p_verd)
+    else:
         self.set_EVerdsNatura(self,p_verd)
     p_activitatf = int(input("Proximitat a gimnassos i complexos esportius = "))
     if p_activitatf >= 3:
@@ -68,6 +98,8 @@ def priorities(self): # retorna llista amb llistes de barris amb el nombre de se
         coincidencies = do_query(looking4)
         barris_activitatf = agrupar_barris(coincidencies)
         self.set_CLocalComunitat(self, (self.CLocalComunitat += 1))
+    else:
+        self.set_CLocalComunitat(self,p_activitatf)
     p_ambient = int(input("Tenir un fort sentiment de comunitat o una comunitat de veïns propera = "))
     if p_ambient >= 3:
         looking4 = whichQueries('p_ambient')
@@ -79,35 +111,73 @@ def priorities(self): # retorna llista amb llistes de barris amb el nombre de se
         coincidencies = do_query(looking4)
         barris_privacitat = agrupar_barris(coincidencies)
         self.set_SeguretatPriv(self, 6 - p_ambient)
-        p_accessib = int(input("Acessibilitat Universal i fàcilitat per a persones amb mobilitat reduïda = "))
+    p_accessib = int(input("Acessibilitat Universal i fàcilitat per a persones amb mobilitat reduïda = "))
     if p_accessib >= 3:
-        p_transpublic = int(input("Connexions amb mitjans de transport públic = "))
-        
+        looking4 = whichQueries('p_accessib')
+        coincidencies = do_query(looking4)
+        barris_accessib = agrupar_barris(coincidencies)
+        self.set_AUniversal(self, p_accessib)
+    else:
+        self.set_AUniversal(self, p_accessib)
+    p_transpublic = int(input("Connexions amb mitjans de transport públic = "))
     if p_transpublic >= 3:
+        looking4 = whichQueries('p_transpublic')
+        coincidencies = do_query(looking4)
+        barris_transpublic = agrupar_barris(coincidencies)
+        self.set_AccessTransPublic(self, p_transpublic)
+    else:
+        self.set_AccessTransPublic(self, p_transpublic)
     p_seguretat = int(input("Índex de seguretat ciutadana a la zona = "))
     if p_seguretat >= 3:
+        looking4 = whichQueries('p_seguretat')
+        coincidencies = do_query(looking4)
+        barris_segurs = agrupar_barris(coincidencies)
+        self.set_SeguretatPriv(self, ((self.SeguretatPriv += p_seguretat)%5))
+    else:
+        self.set_SeguretatPriv(self, p_seguretat)
     p_preus = int(input("Preus de l'habitatge per sota de la mitjana general = "))
     if p_preus >= 3:
+        looking4 = whichQueries('p_preus')
+        coincidencies = do_query(looking4)
+        barris_economics = agrupar_barris(coincidencies)
     p_opcompra = int(input("Opció de compra de l'habitatge = "))
-    if p_ocompra >= 3:
+    if p_ocompra >= 3: # opció de compra
+        looking4 = whichQueries('p_ocompra')
+        coincidencies = do_query(looking4)
+        barris_ocompra = agrupar_barris(coincidencies)
+        self.set_SeguretatPriv(self, self.SeguretatPriv += p_ocompra)%5))
     p_tipushabit = int(input("Que la meva llar es trobi en un bloc residencial = "))
     if p_tipushabit >= 3:
+        looking4 = whichQueries('p_tipushabit')
+        coincidencies = do_query(looking4)
+        barris_pisos = agrupar_barris(coincidencies)
+        self.set_CLocalComunitat(self, p_tipushabit)
+    else:
+        looking4 = whichQueries('p_tipushabit')
+        coincidencies = do_query('["building"="house"]')
+        barris_cases = agrupar_barris(coincidencies)
+        self.set_CLocalComunitat(self, (self.CLocalComunitat - 1)%5)
     p_nivelldevida = int(input("Que el poder adquisitiu mitjà del barri sigui alt = "))
     if p_nivelldevida >= 3:
+        looking4 = whichQueries('p_nivelldevida')
+        coincidencies = do_query(looking4)
+        barris_classeAlta = agrupar_barris(coincidencies)
+        self.set_CLocalComunitat(self, (self.CLocalComunitat - p_nivelldevida)%5)
+    else:
+        self.set_AmbientDens(self, (self.AmbientDens + p_nivelldevida)%5)
     p_infraestdigit = int(input("Tenir una bona connexió a internet i cobertura de fibra òptica = "))
     if p_infraestdigit >= 3:
-        
-    
-    return (barris_gastrocult, barris_verd, _activitatf, p_ambient, p_accessib, 
-            p_transpublic, p_seguretat, p_preus, p_opcompra, p_tipushabit, 
-            p_nivelldevida, p_infraestdigit)
+        looking4 = whichQueries('p_infraestdigit')
+        coincidencies = do_query(looking4)
+        barris_bonaConnexio = agrupar_barris(coincidencies)
+        self.set_InfraDigital(self, (self.InfraDigital)
+    else:
+        self.set_InfraDigital(self, (self.InfraDigital)
+    return (barris_gastrocult, barris_verd, barris_activitatf, barris_ambient, 
+        barris_privacitat, barris_accessib, barris_transpublic, barris_segurs, 
+        barris_economics, barris_ocompra, barris_pisos, barris_cases, 
+        barris_classeAlta, barris_bonaConnexio)
 
-
-def caractsUsuari(prioritats_gen):
-    topPrioritats = {k: v for k, v in prioritats_gen.items() if v >= 3}
-    topPrioritats = topPrioritats.keys()
-    print(topPrioritats)
-    return topPrioritats
 
     
 def whichQueries(prioritat):
@@ -126,10 +196,17 @@ def whichQueries(prioritat):
         'p_ambient': ['["amenity"="community_centre"]', '["amenity"="social_centre"]', 
                       '["amenity"="marketplace"]', '["shop"="convenience"]', 
                       '["amenity"="library"]'],
-        'p_accessib': ['["highway"="footway"]', '["highway"="cycleway"]', 
-                       '["wheelchair"="yes"]', '["tactile_paving"="yes"]'],
+        'p_accessib': ['["wheelchair"="yes"]', '["tactile_paving"="yes"]',
+                       '["highway"="elevator"]','["ramp"="yes"]', '["handrail"="yes"]',
+                       '["kerb"="lowered"]', '["kerb"="flush"]', '["automatic_door"="yes"]',
+                       '["highway"="crossing"]["tactile_paving"="yes"]',
+                       '["crossing"="traffic_signals"]["sound"="yes"]',
+                       '["public_transport"="platform"]["wheelchair"="yes"]',
+                       '["railway"="station"]["wheelchair"="yes"]',
+                       '["amenity"="bus_station"]["wheelchair"="yes"]'],
         'p_transpublic': ['["public_transport"="station"]', '["public_transport"="stop_position"]',
-                          '["amenity"="bus_station"]', '["railway"="station"]', 
+                          '["highway"="footway"]', '["highway"="cycleway"]',
+                          '["amenity"="bus_station"]', '["railway"="station"]',
                           '["railway"="subway_entrance"]', '["railway"="tram_stop"]',
                           '["amenity"="taxi"]', '["amenity"="bicycle_rental"]'],
         'p_seguretat': ['["amenity"="police"]', '["amenity"="fire_station"]',
@@ -158,5 +235,4 @@ def whichQueries(prioritat):
         ]
 
     }
-    d_priorities.get(prioritat)
-    print(q_todo)
+return  d_priorities.get(prioritat)
