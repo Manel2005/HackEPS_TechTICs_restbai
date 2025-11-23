@@ -27,11 +27,20 @@ def do_query(params, access=0):
 
     for param in params:
         data = overpass_query + param + '(area.la);out center;'
-        response = requests.post(overpass_url, data={'data':data})
-        l.extend(response.json().get('elements'))
+        try:
+            response = requests.post(
+                overpass_url,
+                data={'data': data},
+                timeout=30
+            )
+            response.raise_for_status()  # error si codi HTTP no és 200
+            json_data = response.json()
+        except (requests.RequestException, ValueError) as e:
+            # Aquí NO petem l'app, només registrem/ignorem
+            print(f"[Overpass] Error amb el filtre {param}: {e}")
+            continue
+        else:
+            elements = json_data.get('elements', [])
+            l.extend(elements)
+
     return l
-
-
-
-if __name__=='__main__':
-    print(do_query(['["amenity"="restaurant"]', '["amenity"="bar"]']))
