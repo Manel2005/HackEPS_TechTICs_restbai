@@ -48,6 +48,7 @@ def obtenir_puntuacions_barris(preferencies: dict) -> pd.DataFrame:
             '["amenity"="cafe"]',
             '["amenity"="bar"]',
             '["amenity"="fast_food"]',
+            '["amenity"="library"]',
             '["tourism"="museum"]',
             '["tourism"="gallery"]',
             '["tourism"="information"]',
@@ -91,6 +92,15 @@ def obtenir_puntuacions_barris(preferencies: dict) -> pd.DataFrame:
             '["amenity"="clinic"]',
             ])
 
+    if preferencies["educacio"] > 1:
+        filtres.extend([
+            '["amenity"="kindergarten"]',
+            '["amenity"="school"]',
+            '["amenity"="university"]',
+            '["amenity"="college"]',
+            '["amenity"="research_institute"]',
+        ])
+
     # Si no hi ha cap filtre actiu, per defecte demanem restaurants (per tenir alguna cosa)
     if not filtres:
         filtres = ['["building"="supermarket"]']
@@ -133,6 +143,7 @@ def obtenir_puntuacions_barris(preferencies: dict) -> pd.DataFrame:
         compt_esport = 0
         compt_transport = 0
         compt_seguretat = 0
+        compt_educacio = 0
 
         for e in elements:
             tags = e.get("tags", {})
@@ -176,12 +187,19 @@ def obtenir_puntuacions_barris(preferencies: dict) -> pd.DataFrame:
             ):
                 compt_transport += 1
 
+            # Educacio
+            if (
+                    amenity in ("kindergarten", "school", "university", "college", "research_institute")
+            ):
+                compt_educacio += 1
+
         estadistiques[nom_barri] = {
             "cultura": compt_cultura,
             "verda": compt_verda,
             "esport": compt_esport,
             "transport": compt_transport,
             "seguretat": compt_seguretat,
+            "educacio": compt_educacio,
         }
 
     if not estadistiques:
@@ -193,6 +211,7 @@ def obtenir_puntuacions_barris(preferencies: dict) -> pd.DataFrame:
     max_esport = max(v["esport"] for v in estadistiques.values()) or 0
     max_transport = max(v["transport"] for v in estadistiques.values()) or 0
     max_seguretat = max(v["seguretat"] for v in estadistiques.values()) or 0
+    max_seguretat = max(v["educacio"] for v in estadistiques.values()) or 0
 
     # 8) Construir puntuació ponderada per barri
     puntuacions_brutes = {}
@@ -203,6 +222,7 @@ def obtenir_puntuacions_barris(preferencies: dict) -> pd.DataFrame:
         norm_esport = counts["esport"] / max_esport if max_esport > 0 else 0.0
         norm_transport = counts["transport"] / max_transport if max_transport > 0 else 0.0
         norm_seguretat = counts["seguretat"] / max_seguretat if max_seguretat > 0 else 0.0
+        norm_educacio = counts["educacio"] / max_seguretat if max_seguretat > 0 else 0.0
 
 
         # Pesos a partir del qüestionari (0–5 → 0–1)
@@ -212,6 +232,7 @@ def obtenir_puntuacions_barris(preferencies: dict) -> pd.DataFrame:
         w_comunitat = preferencies["comunitat"] / 5.0
         w_transport = preferencies["transport_public"] / 5.0
         w_seguretat = preferencies["seguretat"] / 5.0
+        w_educacio = preferencies["educacio"] / 5.0
         # bloc_residencial no es implementat;
         # ara mateix no afecten la puntuació, però es recullen al qüestionari.
 
@@ -223,10 +244,11 @@ def obtenir_puntuacions_barris(preferencies: dict) -> pd.DataFrame:
         puntuacio += w_esport * norm_esport
         puntuacio += w_transport * norm_transport
         puntuacio += w_seguretat * norm_seguretat
+        puntuacio += w_educacio * norm_educacio
 
         # Comunitat: afegim una part com a mitjana de cultura+zones verdes+esport
         if w_comunitat > 1:
-            base_comunitat = (norm_cultura + norm_verda + norm_esport) / 3.0
+            base_comunitat = (norm_cultura + norm_verda + norm_esport + norm_educacio) / 4.0
             puntuacio += w_comunitat * base_comunitat * 0.5  # factor suau
 
         puntuacions_brutes[nom_barri] = puntuacio
@@ -334,6 +356,11 @@ with st.sidebar.form("formulari_preferencies"):
         1, 5,
         params_guardats.get("seguretat", 1),
     )
+    educacio = st.slider(
+        "Importància de l'accés a centres educatius i de recerca",
+        1, 5,
+        params_guardats.get("educacio", 1),
+    )
     bloc_residencial = st.checkbox(
         "Prefereixo que la llar sigui en un bloc residencial",
         value=params_guardats.get("bloc_residencial", False),
@@ -352,6 +379,7 @@ with st.sidebar.form("formulari_preferencies"):
             "accessibilitat": accessibilitat,
             "transport_public": transport_public,
             "seguretat": seguretat,
+            "educacio": educacio,
             "bloc_residencial": bloc_residencial,
             "client": st.session_state.selected_client,
         }
