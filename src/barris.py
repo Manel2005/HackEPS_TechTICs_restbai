@@ -3,7 +3,6 @@ import json
 from shapely.geometry import Point, shape
 import queries
 from dic2csv import exportar_a_csv
-from duresa import *
 
 def dades_barris(url):
     try:
