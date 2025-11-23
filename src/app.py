@@ -34,7 +34,7 @@ def obtenir_puntuacions_barris(preferencies: dict) -> pd.DataFrame:
     """
 
     # 1) Descarregar la geometria dels barris
-    dades_barris = barris.dades_barris()
+    dades_barris = barris.dades_barris("https://services5.arcgis.com/7nsPwEMP38bSkCjy/arcgis/rest/services/LA_Times_Neighborhoods/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=json")
     if not dades_barris or "features" not in dades_barris:
         return pd.DataFrame(columns=["name", "lat", "lon", "score"])
 
@@ -48,6 +48,9 @@ def obtenir_puntuacions_barris(preferencies: dict) -> pd.DataFrame:
             '["amenity"="cafe"]',
             '["amenity"="bar"]',
             '["amenity"="fast_food"]',
+            '["tourism"="museum"]',
+            '["tourism"="gallery"]',
+            '["tourism"="information"]',
         ])
 
     # Proximitat a zones verdes -> parcs, jardins
@@ -78,6 +81,15 @@ def obtenir_puntuacions_barris(preferencies: dict) -> pd.DataFrame:
             '["public_transport"="stop_position"]',
             '["public_transport"="platform"]',
         ])
+
+    if preferencies["seguretat"] > 1:
+        filtres.extend([
+            '["amenity"="police"]', 
+            '["amenity"="fire_station"]',
+            '["emergency"]', 
+            '["amenity"="hospital"]', 
+            '["amenity"="clinic"]',
+            ]) 
 
     # Si no hi ha cap filtre actiu, per defecte demanem restaurants (per tenir alguna cosa)
     if not filtres:
@@ -120,6 +132,7 @@ def obtenir_puntuacions_barris(preferencies: dict) -> pd.DataFrame:
         compt_verda = 0
         compt_esport = 0
         compt_transport = 0
+        compt_seguretat = 0
 
         for e in elements:
             tags = e.get("tags", {})
@@ -157,11 +170,18 @@ def obtenir_puntuacions_barris(preferencies: dict) -> pd.DataFrame:
             ):
                 compt_transport += 1
 
+            # Seguretat
+            if (
+                amenity in ("police", "fire_station", "hospital", "clinic")
+            ):
+                compt_transport += 1
+
         estadistiques[nom_barri] = {
             "cultura": compt_cultura,
             "verda": compt_verda,
             "esport": compt_esport,
             "transport": compt_transport,
+            "seguretat": compt_seguretat,
         }
 
     if not estadistiques:
@@ -172,6 +192,7 @@ def obtenir_puntuacions_barris(preferencies: dict) -> pd.DataFrame:
     max_verda = max(v["verda"] for v in estadistiques.values()) or 0
     max_esport = max(v["esport"] for v in estadistiques.values()) or 0
     max_transport = max(v["transport"] for v in estadistiques.values()) or 0
+    max_seguretat = max(v["seguretat"] for v in estadistiques.values()) or 0
 
     # 8) Construir puntuació ponderada per barri
     puntuacions_brutes = {}
@@ -181,14 +202,17 @@ def obtenir_puntuacions_barris(preferencies: dict) -> pd.DataFrame:
         norm_verda = counts["verda"] / max_verda if max_verda > 0 else 0.0
         norm_esport = counts["esport"] / max_esport if max_esport > 0 else 0.0
         norm_transport = counts["transport"] / max_transport if max_transport > 0 else 0.0
+        norm_seguretat = counts["seguretat"] / max_seguretat if max_seguretat > 0 else 0.0
+
 
         # Pesos a partir del qüestionari (0–5 → 0–1)
-        w_cultura = preferencies["oferta_cultural"] / 5.0
-        w_verda = preferencies["prox_zones_verdes"] / 5.0
-        w_esport = preferencies["prox_gimnas"] / 5.0
-        w_comunitat = preferencies["comunitat"] / 5.0
-        w_transport = preferencies["transport_public"] / 5.0
-        # seguretat i bloc_residencial no es poden mapejar directament amb Overpass;
+        w_cultura = preferencies["oferta_cultural"] / 6.0
+        w_verda = preferencies["prox_zones_verdes"] / 6.0
+        w_esport = preferencies["prox_gimnas"] / 6.0
+        w_comunitat = preferencies["comunitat"] / 6.0
+        w_transport = preferencies["transport_public"] / 6.0
+        w_seguretat = preferencies["seguretat"] / 6.0
+        # bloc_residencial no es implementat;
         # ara mateix no afecten la puntuació, però es recullen al qüestionari.
 
         puntuacio = 0.0
@@ -198,6 +222,7 @@ def obtenir_puntuacions_barris(preferencies: dict) -> pd.DataFrame:
         puntuacio += w_verda * norm_verda
         puntuacio += w_esport * norm_esport
         puntuacio += w_transport * norm_transport
+        puntuacio += w_seguretat * norm_seguretat
 
         # Comunitat: afegim una part com a mitjana de cultura+zones verdes+esport
         if w_comunitat > 1:
